@@ -1,7 +1,10 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const sharp = require("sharp");
 
 const imageDir = path.join(process.cwd(), "public", "image-scenery");
+const previewDir = path.join(imageDir, "thumbs");
+const previewConfigPath = path.join(previewDir, ".preview-config.json");
 const manifestPath = path.join(imageDir, "images.json");
 const supportedExtensions = new Set([
   ".avif",
@@ -13,6 +16,16 @@ const supportedExtensions = new Set([
   ".webp",
 ]);
 const collator = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
+const previewVersion = "gallery-preview-v2";
+const previewLongEdge = 1600;
+const previewQuality = 76;
+const previewConfigSignature = JSON.stringify({
+  version: previewVersion,
+  longEdge: previewLongEdge,
+  quality: previewQuality,
+  naming: "same-as-source",
+});
+const previewConfigFilename = path.basename(previewConfigPath);
 const jpegSofMarkers = new Set([
   0xc0,
   0xc1,
@@ -182,8 +195,79 @@ function getImageDimensions(buffer) {
   );
 }
 
+function createPreviewFilename(filename) {
+  return filename;
+}
+
+async function ensurePreviewImage(imagePath, buffer, previewFilename, sourceUpdatedAt, forceRegenerate) {
+  const previewPath = path.join(previewDir, previewFilename);
+  const previewStats = await fs.stat(previewPath).catch(() => null);
+  const extension = path.extname(previewFilename).toLowerCase();
+
+  if (!forceRegenerate && previewStats && previewStats.mtimeMs >= sourceUpdatedAt) {
+    return previewFilename;
+  }
+
+  const pipeline = sharp(buffer).rotate().resize({
+    width: previewLongEdge,
+    height: previewLongEdge,
+    fit: "inside",
+    withoutEnlargement: true,
+  });
+
+  if (extension === ".jpg" || extension === ".jpeg") {
+    await pipeline.jpeg({ quality: previewQuality, mozjpeg: true }).toFile(previewPath);
+    return previewFilename;
+  }
+
+  if (extension === ".png") {
+    await pipeline
+      .png({ compressionLevel: 9, adaptiveFiltering: true, palette: true, quality: previewQuality })
+      .toFile(previewPath);
+    return previewFilename;
+  }
+
+  if (extension === ".webp") {
+    await pipeline.webp({ quality: previewQuality }).toFile(previewPath);
+    return previewFilename;
+  }
+
+  if (extension === ".avif") {
+    await pipeline.avif({ quality: Math.max(previewQuality - 10, 45), effort: 4 }).toFile(previewPath);
+    return previewFilename;
+  }
+
+  if (extension === ".gif") {
+    await pipeline.gif({ effort: 4 }).toFile(previewPath);
+    return previewFilename;
+  }
+
+  await fs.copyFile(imagePath, previewPath);
+
+  return previewFilename;
+}
+
+async function removeStalePreviews(expectedPreviewFilenames) {
+  const entries = await fs.readdir(previewDir, { withFileTypes: true }).catch(() => []);
+
+  await Promise.all(
+    entries
+      .filter((entry) => entry.isFile() && entry.name !== previewConfigFilename)
+      .map((entry) => entry.name)
+      .filter((filename) => !expectedPreviewFilenames.has(filename))
+      .map((filename) => fs.unlink(path.join(previewDir, filename))),
+  );
+}
+
+async function shouldForceRegeneratePreviews() {
+  const currentConfig = await fs.readFile(previewConfigPath, "utf8").catch(() => "");
+
+  return currentConfig.trim() !== previewConfigSignature;
+}
+
 async function getImageFiles() {
   await fs.mkdir(imageDir, { recursive: true });
+  await fs.mkdir(previewDir, { recursive: true });
 
   const entries = await fs.readdir(imageDir, { withFileTypes: true });
 
@@ -197,18 +281,30 @@ async function getImageFiles() {
 
 async function buildManifest() {
   const filenames = await getImageFiles();
+  const previewFilenames = new Set();
+  const forceRegeneratePreviews = await shouldForceRegeneratePreviews();
 
-  return Promise.all(
+  const manifest = await Promise.all(
     filenames.map(async (filename) => {
       const imagePath = path.join(imageDir, filename);
       const [buffer, fileStats] = await Promise.all([fs.readFile(imagePath), fs.stat(imagePath)]);
       const dimensions = getImageDimensions(buffer) ?? {};
       const width = dimensions.width ?? null;
       const height = dimensions.height ?? null;
+      const previewFilename = await ensurePreviewImage(
+        imagePath,
+        buffer,
+        createPreviewFilename(filename),
+        fileStats.mtimeMs,
+        forceRegeneratePreviews,
+      );
       const manifestEntry = {
         filename,
+        previewFilename,
         sizeBytes: fileStats.size,
       };
+
+      previewFilenames.add(previewFilename);
 
       if (width !== null) {
         manifestEntry.width = width;
@@ -221,6 +317,11 @@ async function buildManifest() {
       return manifestEntry;
     }),
   );
+
+  await removeStalePreviews(previewFilenames);
+  await fs.writeFile(previewConfigPath, `${previewConfigSignature}\n`, "utf8");
+
+  return manifest;
 }
 
 async function main() {

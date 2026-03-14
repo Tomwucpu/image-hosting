@@ -34,6 +34,7 @@ function getLayoutClass(orientation) {
 }
 
 export default function GalleryItem({ image, index, onClick }) {
+  const displaySrc = image.previewSrc ?? image.src;
   const isKnownLoaded = loadedImageFilenames.has(image.filename);
   const [isLoaded, setIsLoaded] = useState(isKnownLoaded);
   const [shouldLoad, setShouldLoad] = useState(index < 6 || isKnownLoaded);
@@ -47,7 +48,7 @@ export default function GalleryItem({ image, index, onClick }) {
     setIsLoaded(knownLoaded);
     setShouldLoad(index < 6 || knownLoaded);
     setOrientation(image.orientation);
-  }, [image.filename, image.orientation, image.src, index]);
+  }, [image.filename, image.orientation, displaySrc, index]);
 
   useEffect(() => {
     const current = articleRef.current;
@@ -105,7 +106,7 @@ export default function GalleryItem({ image, index, onClick }) {
       current.removeEventListener("error", handleReady);
       window.clearTimeout(timer);
     };
-  }, [image.orientation, image.src, shouldLoad]);
+  }, [image.orientation, displaySrc, shouldLoad]);
 
   return (
     <article
@@ -115,7 +116,7 @@ export default function GalleryItem({ image, index, onClick }) {
     >
       <img
         ref={imageRef}
-        src={shouldLoad ? image.src : EMPTY_IMAGE_SRC}
+        src={shouldLoad ? displaySrc : EMPTY_IMAGE_SRC}
         alt={image.filename}
         loading={index < 4 ? "eager" : "lazy"}
         decoding="async"

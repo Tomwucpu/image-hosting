@@ -161,10 +161,11 @@ export default function GalleryClient({ images }) {
     );
   }
 
-  const selectedImageUrl =
+  const selectedOriginalImageUrl =
     lightboxImage && typeof window !== "undefined"
       ? new URL(lightboxImage.src, window.location.href).toString()
       : lightboxImage?.src ?? "";
+  const selectedPreviewSrc = lightboxImage?.previewSrc ?? lightboxImage?.src ?? "";
   const visibleImages = images.slice(0, visibleCount);
   const hasMoreImages = visibleCount < images.length;
 
@@ -206,7 +207,7 @@ export default function GalleryClient({ images }) {
         >
           <div className="lightbox-card" onClick={(event) => event.stopPropagation()}>
             <div className="lightbox-visual">
-              <img src={lightboxImage.src} alt={lightboxImage.filename} />
+              <img src={selectedPreviewSrc} alt={lightboxImage.filename} />
             </div>
 
             <aside className="lightbox-side">
@@ -230,14 +231,14 @@ export default function GalleryClient({ images }) {
               </div>
 
               <div className="lightbox-group">
-                <div className="lightbox-label">资源地址</div>
-                <div className="lightbox-linkbox">{selectedImageUrl}</div>
+                <div className="lightbox-label">原图地址</div>
+                <div className="lightbox-linkbox">{selectedOriginalImageUrl}</div>
                 <button
                   type="button"
                   className="lightbox-button"
-                  onClick={() => handleCopy(selectedImageUrl)}
+                  onClick={() => handleCopy(selectedOriginalImageUrl)}
                 >
-                  {copied ? "已复制链接" : "复制图片链接"}
+                  {copied ? "已复制原图链接" : "复制原图链接"}
                 </button>
               </div>
 
@@ -259,7 +260,7 @@ export default function GalleryClient({ images }) {
 
               <div className="lightbox-actions">
                 <a className="lightbox-download" href={lightboxImage.src} download>
-                  保存图片
+                  下载原图
                 </a>
               </div>
             </aside>

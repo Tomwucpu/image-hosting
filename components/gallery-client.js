@@ -10,6 +10,17 @@ import ThemeToggle from "@/components/theme-toggle";
 const LIGHTBOX_CLOSE_DURATION = 280;
 const INITIAL_IMAGE_COUNT = 24;
 const IMAGE_BATCH_SIZE = 24;
+const MIN_LIGHTBOX_SCALE = 1;
+const MAX_LIGHTBOX_SCALE = 4;
+const LIGHTBOX_SCALE_STEP = 0.2;
+
+function clampValue(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function getDefaultLightboxOffset() {
+  return { x: 0, y: 0 };
+}
 
 function getOrientationLabel(orientation) {
   if (orientation === "portrait") {
@@ -28,17 +39,23 @@ function getOrientationLabel(orientation) {
 }
 
 export default function GalleryClient({ images }) {
-  const [lightboxImage, setLightboxImage] = useState(null);
+  const [lightboxFilename, setLightboxFilename] = useState(null);
   const [isLightboxClosing, setIsLightboxClosing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [visibleCount, setVisibleCount] = useState(INITIAL_IMAGE_COUNT);
   const [columnCount, setColumnCount] = useState(0);
   const [rowSize, setRowSize] = useState(120);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [lightboxScale, setLightboxScale] = useState(MIN_LIGHTBOX_SCALE);
+  const [lightboxOffset, setLightboxOffset] = useState(() => getDefaultLightboxOffset());
+  const [isLightboxDragging, setIsLightboxDragging] = useState(false);
   const copyResetTimer = useRef(null);
   const closeTimerRef = useRef(null);
   const gridRef = useRef(null);
   const loadMoreRef = useRef(null);
+  const visualFrameRef = useRef(null);
+  const visualImageRef = useRef(null);
+  const dragStateRef = useRef(null);
 
   useEffect(() => {
     document.body.style.overflow = "auto";
@@ -138,10 +155,69 @@ export default function GalleryClient({ images }) {
     };
   }, [images.length, visibleCount]);
 
+  const orderedImages = getCompactImageOrder(images, columnCount);
+  const visibleImages = orderedImages.slice(0, visibleCount);
+  const hasMoreImages = visibleCount < orderedImages.length;
+  const lightboxIndex = lightboxFilename
+    ? orderedImages.findIndex((image) => image.filename === lightboxFilename)
+    : -1;
+  const lightboxImage = lightboxIndex >= 0 ? orderedImages[lightboxIndex] : null;
+  const hasPreviousImage = lightboxIndex > 0;
+  const hasNextImage = lightboxIndex >= 0 && lightboxIndex < orderedImages.length - 1;
+  const selectedOriginalImageUrl =
+    lightboxImage && typeof window !== "undefined"
+      ? new URL(lightboxImage.src, window.location.href).toString()
+      : lightboxImage?.src ?? "";
+  const selectedPreviewSrc = lightboxImage?.previewSrc ?? lightboxImage?.src ?? "";
+  const lightboxScaleLabel = `${Math.round(lightboxScale * 100)}%`;
+
+  const releaseLightboxPointerCapture = () => {
+    const activePointerId = dragStateRef.current?.pointerId;
+    const viewport = visualFrameRef.current;
+
+    if (
+      viewport &&
+      activePointerId !== undefined &&
+      viewport.hasPointerCapture(activePointerId)
+    ) {
+      viewport.releasePointerCapture(activePointerId);
+    }
+  };
+
+  const resetLightboxViewport = () => {
+    releaseLightboxPointerCapture();
+    dragStateRef.current = null;
+    setIsLightboxDragging(false);
+    setLightboxScale(MIN_LIGHTBOX_SCALE);
+    setLightboxOffset(getDefaultLightboxOffset());
+  };
+
+  const clampLightboxOffset = (nextOffset, nextScale = lightboxScale) => {
+    if (nextScale <= MIN_LIGHTBOX_SCALE) {
+      return getDefaultLightboxOffset();
+    }
+
+    const viewport = visualFrameRef.current;
+    const imageElement = visualImageRef.current;
+
+    if (!viewport || !imageElement) {
+      return nextOffset;
+    }
+
+    const maxX = Math.max(0, ((imageElement.offsetWidth * nextScale) - viewport.clientWidth) / 2);
+    const maxY = Math.max(0, ((imageElement.offsetHeight * nextScale) - viewport.clientHeight) / 2);
+
+    return {
+      x: clampValue(nextOffset.x, -maxX, maxX),
+      y: clampValue(nextOffset.y, -maxY, maxY),
+    };
+  };
+
   const finishClose = () => {
-    setLightboxImage(null);
+    setLightboxFilename(null);
     setIsLightboxClosing(false);
     setCopied(false);
+    resetLightboxViewport();
     document.body.style.overflow = "auto";
     closeTimerRef.current = null;
   };
@@ -161,24 +237,6 @@ export default function GalleryClient({ images }) {
     closeTimerRef.current = window.setTimeout(finishClose, LIGHTBOX_CLOSE_DURATION);
   };
 
-  useEffect(() => {
-    if (!lightboxImage) {
-      return undefined;
-    }
-
-    const handleKeyDown = (event) => {
-      if (event.key === "Escape") {
-        requestClose();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [lightboxImage, isLightboxClosing]);
-
   const handleCopy = async (text) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -194,21 +252,207 @@ export default function GalleryClient({ images }) {
     }
   };
 
+  const handleSelectImage = (nextIndex) => {
+    if (isLightboxClosing || nextIndex < 0 || nextIndex >= orderedImages.length) {
+      return;
+    }
+
+    const nextImage = orderedImages[nextIndex];
+
+    if (!nextImage) {
+      return;
+    }
+
+    setLightboxFilename(nextImage.filename);
+    setCopied(false);
+    resetLightboxViewport();
+  };
+
+  const handlePreviousImage = () => {
+    handleSelectImage(lightboxIndex - 1);
+  };
+
+  const handleNextImage = () => {
+    handleSelectImage(lightboxIndex + 1);
+  };
+
   const handleOpen = (image) => {
     if (closeTimerRef.current) {
       window.clearTimeout(closeTimerRef.current);
       closeTimerRef.current = null;
     }
 
-    setLightboxImage(image);
+    setLightboxFilename(image.filename);
     setIsLightboxClosing(false);
     setCopied(false);
+    resetLightboxViewport();
     document.body.style.overflow = "hidden";
   };
 
   const handleBackToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  const handleResetLightboxViewport = () => {
+    resetLightboxViewport();
+  };
+
+  const handleLightboxWheel = (event) => {
+    if (!lightboxImage || isLightboxClosing) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const scaleDelta = event.deltaY < 0 ? LIGHTBOX_SCALE_STEP : -LIGHTBOX_SCALE_STEP;
+
+    setLightboxScale((currentScale) => {
+      const nextScale = clampValue(
+        Math.round((currentScale + scaleDelta) * 100) / 100,
+        MIN_LIGHTBOX_SCALE,
+        MAX_LIGHTBOX_SCALE,
+      );
+
+      setLightboxOffset((currentOffset) => clampLightboxOffset(currentOffset, nextScale));
+
+      return nextScale;
+    });
+  };
+
+  const stopDraggingLightboxImage = () => {
+    releaseLightboxPointerCapture();
+    dragStateRef.current = null;
+    setIsLightboxDragging(false);
+  };
+
+  const handleLightboxPointerDown = (event) => {
+    if (!lightboxImage || lightboxScale <= MIN_LIGHTBOX_SCALE || event.button !== 0) {
+      return;
+    }
+
+    dragStateRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: lightboxOffset.x,
+      originY: lightboxOffset.y,
+    };
+
+    setIsLightboxDragging(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  };
+
+  const handleLightboxPointerMove = (event) => {
+    const dragState = dragStateRef.current;
+
+    if (!dragState || dragState.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const nextOffset = clampLightboxOffset(
+      {
+        x: dragState.originX + (event.clientX - dragState.startX),
+        y: dragState.originY + (event.clientY - dragState.startY),
+      },
+      lightboxScale,
+    );
+
+    setLightboxOffset(nextOffset);
+  };
+
+  const handleLightboxPointerUp = (event) => {
+    const dragState = dragStateRef.current;
+
+    if (!dragState || dragState.pointerId !== event.pointerId) {
+      return;
+    }
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    stopDraggingLightboxImage();
+  };
+
+  const handleLightboxPointerCancel = (event) => {
+    const dragState = dragStateRef.current;
+
+    if (!dragState || dragState.pointerId !== event.pointerId) {
+      return;
+    }
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    stopDraggingLightboxImage();
+  };
+
+  useEffect(() => {
+    if (!lightboxImage) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        requestClose();
+        return;
+      }
+
+      if (isLightboxClosing) {
+        return;
+      }
+
+      if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+        event.preventDefault();
+        handlePreviousImage();
+        return;
+      }
+
+      if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+        event.preventDefault();
+        handleNextImage();
+        return;
+      }
+
+      if (event.key === "0") {
+        event.preventDefault();
+        handleResetLightboxViewport();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [lightboxFilename, isLightboxClosing, lightboxIndex, columnCount, images]);
+
+  useEffect(() => {
+    if (!lightboxImage) {
+      return undefined;
+    }
+
+    const handleResize = () => {
+      setLightboxOffset((currentOffset) => clampLightboxOffset(currentOffset, lightboxScale));
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [lightboxImage, lightboxScale]);
+
+  useEffect(() => {
+    if (lightboxImage) {
+      return undefined;
+    }
+
+    stopDraggingLightboxImage();
+    return undefined;
+  }, [lightboxImage]);
 
   if (!images.length) {
     return (
@@ -220,15 +464,6 @@ export default function GalleryClient({ images }) {
       </main>
     );
   }
-
-  const selectedOriginalImageUrl =
-    lightboxImage && typeof window !== "undefined"
-      ? new URL(lightboxImage.src, window.location.href).toString()
-      : lightboxImage?.src ?? "";
-  const selectedPreviewSrc = lightboxImage?.previewSrc ?? lightboxImage?.src ?? "";
-  const orderedImages = getCompactImageOrder(images, columnCount);
-  const visibleImages = orderedImages.slice(0, visibleCount);
-  const hasMoreImages = visibleCount < orderedImages.length;
 
   return (
     <div className="gallery-shell">
@@ -283,22 +518,87 @@ export default function GalleryClient({ images }) {
         >
           <div className="lightbox-card" onClick={(event) => event.stopPropagation()}>
             <div className="lightbox-visual">
-              <img src={selectedPreviewSrc} alt={lightboxImage.filename} />
+              <button
+                type="button"
+                className="lightbox-nav lightbox-nav--prev"
+                onClick={handlePreviousImage}
+                aria-label="查看上一张图片"
+                disabled={!hasPreviousImage || isLightboxClosing}
+              >
+                ‹
+              </button>
+
+              <div
+                ref={visualFrameRef}
+                className={`lightbox-visual-frame${lightboxScale > MIN_LIGHTBOX_SCALE ? " lightbox-visual-frame--interactive" : ""}${isLightboxDragging ? " lightbox-visual-frame--dragging" : ""}`}
+                onWheel={handleLightboxWheel}
+                onPointerDown={handleLightboxPointerDown}
+                onPointerMove={handleLightboxPointerMove}
+                onPointerUp={handleLightboxPointerUp}
+                onPointerCancel={handleLightboxPointerCancel}
+              >
+                <img
+                  ref={visualImageRef}
+                  className={`lightbox-image${isLightboxDragging ? " lightbox-image--dragging" : ""}`}
+                  src={selectedPreviewSrc}
+                  alt={lightboxImage.filename}
+                  draggable={false}
+                  onDragStart={(event) => event.preventDefault()}
+                  onLoad={() => {
+                    setLightboxOffset((currentOffset) =>
+                      clampLightboxOffset(currentOffset, lightboxScale),
+                    );
+                  }}
+                  style={{
+                    transform: `translate3d(${lightboxOffset.x}px, ${lightboxOffset.y}px, 0) scale(${lightboxScale})`,
+                  }}
+                />
+              </div>
+
+              <button
+                type="button"
+                className="lightbox-nav lightbox-nav--next"
+                onClick={handleNextImage}
+                aria-label="查看下一张图片"
+                disabled={!hasNextImage || isLightboxClosing}
+              >
+                ›
+              </button>
             </div>
 
             <aside className="lightbox-side">
               <div className="lightbox-toolbar">
-                <button
-                  type="button"
-                  className="lightbox-close"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    requestClose();
-                  }}
-                  aria-label="关闭预览"
-                >
-                  ×
-                </button>
+                <div className="lightbox-toolbar-meta">
+                  <span>{lightboxIndex + 1}/{orderedImages.length}</span>
+                  <span>{lightboxScaleLabel}</span>
+                </div>
+
+                <div className="lightbox-toolbar-actions">
+                  <button
+                    type="button"
+                    className="lightbox-toolbar-button"
+                    onClick={handleResetLightboxViewport}
+                    disabled={
+                      lightboxScale === MIN_LIGHTBOX_SCALE &&
+                      lightboxOffset.x === 0 &&
+                      lightboxOffset.y === 0
+                    }
+                  >
+                    复原
+                  </button>
+
+                  <button
+                    type="button"
+                    className="lightbox-close"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      requestClose();
+                    }}
+                    aria-label="关闭预览"
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
 
               <div className="lightbox-group">
@@ -332,6 +632,13 @@ export default function GalleryClient({ images }) {
               <div className="lightbox-group">
                 <div className="lightbox-label">方向</div>
                 <div className="lightbox-value">{getOrientationLabel(lightboxImage.orientation)}</div>
+              </div>
+
+              <div className="lightbox-group">
+                <div className="lightbox-label">操作</div>
+                <div className="lightbox-hint">
+                  滚轮缩放，拖拽查看局部，左右或上下方向键切换图片，按 0 可快速复原。
+                </div>
               </div>
 
               <div className="lightbox-actions">

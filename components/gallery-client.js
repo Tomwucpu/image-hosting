@@ -10,7 +10,8 @@ import ThemeToggle from "@/components/theme-toggle";
 const LIGHTBOX_CLOSE_DURATION = 280;
 const INITIAL_IMAGE_COUNT = 24;
 const IMAGE_BATCH_SIZE = 24;
-const MIN_LIGHTBOX_SCALE = 1;
+const DEFAULT_LIGHTBOX_SCALE = 1;
+const MIN_LIGHTBOX_SCALE = 0.25;
 const MAX_LIGHTBOX_SCALE = 4;
 const LIGHTBOX_SCALE_STEP = 0.2;
 
@@ -46,7 +47,7 @@ export default function GalleryClient({ images }) {
   const [columnCount, setColumnCount] = useState(0);
   const [rowSize, setRowSize] = useState(120);
   const [showBackToTop, setShowBackToTop] = useState(false);
-  const [lightboxScale, setLightboxScale] = useState(MIN_LIGHTBOX_SCALE);
+  const [lightboxScale, setLightboxScale] = useState(DEFAULT_LIGHTBOX_SCALE);
   const [lightboxOffset, setLightboxOffset] = useState(() => getDefaultLightboxOffset());
   const [isLightboxDragging, setIsLightboxDragging] = useState(false);
   const copyResetTimer = useRef(null);
@@ -188,12 +189,12 @@ export default function GalleryClient({ images }) {
     releaseLightboxPointerCapture();
     dragStateRef.current = null;
     setIsLightboxDragging(false);
-    setLightboxScale(MIN_LIGHTBOX_SCALE);
+    setLightboxScale(DEFAULT_LIGHTBOX_SCALE);
     setLightboxOffset(getDefaultLightboxOffset());
   };
 
   const clampLightboxOffset = (nextOffset, nextScale = lightboxScale) => {
-    if (nextScale <= MIN_LIGHTBOX_SCALE) {
+    if (nextScale <= DEFAULT_LIGHTBOX_SCALE) {
       return getDefaultLightboxOffset();
     }
 
@@ -326,7 +327,7 @@ export default function GalleryClient({ images }) {
   };
 
   const handleLightboxPointerDown = (event) => {
-    if (!lightboxImage || lightboxScale <= MIN_LIGHTBOX_SCALE || event.button !== 0) {
+    if (!lightboxImage || lightboxScale <= DEFAULT_LIGHTBOX_SCALE || event.button !== 0) {
       return;
     }
 
@@ -530,7 +531,7 @@ export default function GalleryClient({ images }) {
 
               <div
                 ref={visualFrameRef}
-                className={`lightbox-visual-frame${lightboxScale > MIN_LIGHTBOX_SCALE ? " lightbox-visual-frame--interactive" : ""}${isLightboxDragging ? " lightbox-visual-frame--dragging" : ""}`}
+                className={`lightbox-visual-frame${lightboxScale > DEFAULT_LIGHTBOX_SCALE ? " lightbox-visual-frame--interactive" : ""}${isLightboxDragging ? " lightbox-visual-frame--dragging" : ""}`}
                 onWheel={handleLightboxWheel}
                 onPointerDown={handleLightboxPointerDown}
                 onPointerMove={handleLightboxPointerMove}
@@ -579,7 +580,7 @@ export default function GalleryClient({ images }) {
                     className="lightbox-toolbar-button"
                     onClick={handleResetLightboxViewport}
                     disabled={
-                      lightboxScale === MIN_LIGHTBOX_SCALE &&
+                      lightboxScale === DEFAULT_LIGHTBOX_SCALE &&
                       lightboxOffset.x === 0 &&
                       lightboxOffset.y === 0
                     }

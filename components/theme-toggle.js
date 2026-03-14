@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
 function resolveInitialTheme() {
   if (typeof window === "undefined") {
@@ -17,6 +18,8 @@ function resolveInitialTheme() {
 export default function ThemeToggle({ solid = false }) {
   const [mounted, setMounted] = useState(false);
   const [isDark, setIsDark] = useState(false);
+  const transitionTimerRef = useRef(null);
+  const transitionTokenRef = useRef(0);
 
   useEffect(() => {
     const initialIsDark = resolveInitialTheme();
@@ -24,14 +27,87 @@ export default function ThemeToggle({ solid = false }) {
     document.documentElement.classList.toggle("dark", initialIsDark);
     setIsDark(initialIsDark);
     setMounted(true);
+
+    return () => {
+      if (transitionTimerRef.current) {
+        window.clearTimeout(transitionTimerRef.current);
+      }
+    };
   }, []);
 
-  const toggleTheme = () => {
+  const toggleTheme = (event) => {
+    const root = document.documentElement;
     const nextIsDark = !isDark;
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const canUseViewTransition =
+      typeof document.startViewTransition === "function" && !prefersReducedMotion;
+    const toggleRect = event.currentTarget.getBoundingClientRect();
+    const centerX = toggleRect.left + toggleRect.width / 2;
+    const centerY = toggleRect.top + toggleRect.height / 2;
+    const endRadius = Math.hypot(
+      Math.max(centerX, window.innerWidth - centerX),
+      Math.max(centerY, window.innerHeight - centerY),
+    );
+    const transitionToken = transitionTokenRef.current + 1;
 
-    document.documentElement.classList.toggle("dark", nextIsDark);
-    window.localStorage.setItem("theme", nextIsDark ? "dark" : "light");
-    setIsDark(nextIsDark);
+    transitionTokenRef.current = transitionToken;
+
+    const applyTheme = () => {
+      root.classList.toggle("dark", nextIsDark);
+      window.localStorage.setItem("theme", nextIsDark ? "dark" : "light");
+      flushSync(() => {
+        setIsDark(nextIsDark);
+      });
+    };
+
+    const clearThemeTransitionClass = () => {
+      if (transitionTokenRef.current !== transitionToken) {
+        return;
+      }
+
+      root.classList.remove("theme-switching");
+    };
+
+    if (transitionTimerRef.current) {
+      window.clearTimeout(transitionTimerRef.current);
+    }
+
+    if (!canUseViewTransition) {
+      root.classList.add("theme-switching");
+      applyTheme();
+      transitionTimerRef.current = window.setTimeout(clearThemeTransitionClass, 520);
+      return;
+    }
+
+    const transition = document.startViewTransition(() => {
+      applyTheme();
+    });
+
+    transition.ready
+      .then(() => {
+        const clipPath = [
+          `circle(0px at ${centerX}px ${centerY}px)`,
+          `circle(${endRadius}px at ${centerX}px ${centerY}px)`,
+        ];
+
+        document.documentElement.animate(
+          {
+            clipPath,
+          },
+          {
+            duration: 560,
+            easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+            pseudoElement: "::view-transition-new(root)",
+          },
+        );
+      })
+      .catch(() => {
+        clearThemeTransitionClass();
+      });
+
+    transition.finished.finally(() => {
+      clearThemeTransitionClass();
+    });
   };
 
   if (!mounted) {

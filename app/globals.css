@@ -732,3 +732,220 @@ html.dark .theme-toggle {
     grid-template-columns: 1fr;
   }
 }
+
+.lightbox {
+  animation: lightbox-fade-in 240ms ease;
+}
+
+.lightbox-card {
+  transform-origin: center center;
+  animation: lightbox-card-in 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lightbox-visual img {
+  animation: lightbox-image-in 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lightbox-side > * {
+  opacity: 0;
+  animation: lightbox-content-in 320ms ease forwards;
+}
+
+.lightbox-side > :nth-child(1) {
+  animation-delay: 90ms;
+}
+
+.lightbox-side > :nth-child(2) {
+  animation-delay: 130ms;
+}
+
+.lightbox-side > :nth-child(3) {
+  animation-delay: 170ms;
+}
+
+.lightbox-side > :nth-child(4) {
+  animation-delay: 210ms;
+}
+
+.lightbox-side > :nth-child(5) {
+  animation-delay: 250ms;
+}
+
+.lightbox-side > :nth-child(6) {
+  animation-delay: 290ms;
+}
+
+@keyframes lightbox-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes lightbox-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes lightbox-image-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+    filter: blur(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes lightbox-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.lightbox-close {
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  line-height: 1;
+  opacity: 0;
+  animation: lightbox-close-in 240ms ease 90ms forwards;
+  transition:
+    transform 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.lightbox-close:hover {
+  transform: scale(1.06);
+  background: var(--panel-strong);
+}
+
+.lightbox-side > *:not(.lightbox-close) {
+  opacity: 0;
+  animation: lightbox-content-in 320ms ease forwards;
+}
+
+.lightbox-side > :not(.lightbox-close):nth-child(2) {
+  animation-delay: 130ms;
+}
+
+.lightbox-side > :not(.lightbox-close):nth-child(3) {
+  animation-delay: 170ms;
+}
+
+.lightbox-side > :not(.lightbox-close):nth-child(4) {
+  animation-delay: 210ms;
+}
+
+.lightbox-side > :not(.lightbox-close):nth-child(5) {
+  animation-delay: 250ms;
+}
+
+.lightbox-side > :not(.lightbox-close):nth-child(6) {
+  animation-delay: 290ms;
+}
+
+.lightbox-side > :not(.lightbox-close):nth-child(7) {
+  animation-delay: 330ms;
+}
+
+.lightbox--closing {
+  animation: lightbox-fade-out 220ms ease forwards;
+}
+
+.lightbox--closing .lightbox-card {
+  animation: lightbox-card-out 240ms cubic-bezier(0.55, 0, 0.35, 1) forwards;
+}
+
+.lightbox--closing .lightbox-visual img {
+  animation: lightbox-image-out 220ms ease forwards;
+}
+
+.lightbox--closing .lightbox-close,
+.lightbox--closing .lightbox-side > *:not(.lightbox-close) {
+  animation: lightbox-content-out 180ms ease forwards;
+  animation-delay: 0ms;
+}
+
+@keyframes lightbox-close-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes lightbox-fade-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes lightbox-card-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+}
+
+@keyframes lightbox-image-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+    filter: blur(6px);
+  }
+}
+
+@keyframes lightbox-content-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}

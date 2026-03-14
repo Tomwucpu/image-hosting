@@ -6,18 +6,27 @@ import Link from "next/link";
 import GalleryItem from "@/components/gallery-item";
 import ThemeToggle from "@/components/theme-toggle";
 
+const LIGHTBOX_CLOSE_DURATION = 280;
+
 export default function GalleryClient({ images }) {
-  const [selectedImage, setSelectedImage] = useState(null);
+  const [lightboxImage, setLightboxImage] = useState(null);
+  const [isLightboxClosing, setIsLightboxClosing] = useState(false);
   const [copied, setCopied] = useState(false);
   const copyResetTimer = useRef(null);
+  const closeTimerRef = useRef(null);
 
   useEffect(() => {
     document.body.style.overflow = "auto";
 
     return () => {
       document.body.style.overflow = "";
+
       if (copyResetTimer.current) {
         window.clearTimeout(copyResetTimer.current);
+      }
+
+      if (closeTimerRef.current) {
+        window.clearTimeout(closeTimerRef.current);
       }
     };
   }, []);
@@ -25,6 +34,47 @@ export default function GalleryClient({ images }) {
   const galleryImages = useMemo(() => {
     return [...images];
   }, [images]);
+
+  const finishClose = () => {
+    setLightboxImage(null);
+    setIsLightboxClosing(false);
+    setCopied(false);
+    document.body.style.overflow = "auto";
+    closeTimerRef.current = null;
+  };
+
+  const requestClose = () => {
+    if (!lightboxImage || isLightboxClosing) {
+      return;
+    }
+
+    setIsLightboxClosing(true);
+    setCopied(false);
+
+    if (closeTimerRef.current) {
+      window.clearTimeout(closeTimerRef.current);
+    }
+
+    closeTimerRef.current = window.setTimeout(finishClose, LIGHTBOX_CLOSE_DURATION);
+  };
+
+  useEffect(() => {
+    if (!lightboxImage) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        requestClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [lightboxImage, isLightboxClosing]);
 
   const handleCopy = async (text) => {
     try {
@@ -42,15 +92,15 @@ export default function GalleryClient({ images }) {
   };
 
   const handleOpen = (image) => {
-    setSelectedImage(image);
+    if (closeTimerRef.current) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+
+    setLightboxImage(image);
+    setIsLightboxClosing(false);
     setCopied(false);
     document.body.style.overflow = "hidden";
-  };
-
-  const handleClose = () => {
-    setSelectedImage(null);
-    setCopied(false);
-    document.body.style.overflow = "auto";
   };
 
   if (!galleryImages.length) {
@@ -65,9 +115,9 @@ export default function GalleryClient({ images }) {
   }
 
   const selectedImageUrl =
-    selectedImage && typeof window !== "undefined"
-      ? new URL(selectedImage.src, window.location.href).toString()
-      : selectedImage?.src ?? "";
+    lightboxImage && typeof window !== "undefined"
+      ? new URL(lightboxImage.src, window.location.href).toString()
+      : lightboxImage?.src ?? "";
 
   return (
     <div className="gallery-shell">
@@ -96,21 +146,32 @@ export default function GalleryClient({ images }) {
         ))}
       </main>
 
-      {selectedImage ? (
-        <div className="lightbox" onClick={handleClose}>
+      {lightboxImage ? (
+        <div
+          className={`lightbox${isLightboxClosing ? " lightbox--closing" : ""}`}
+          onClick={requestClose}
+        >
           <div className="lightbox-card" onClick={(event) => event.stopPropagation()}>
             <div className="lightbox-visual">
-              <img src={selectedImage.src} alt={selectedImage.alt} />
+              <img src={lightboxImage.src} alt={lightboxImage.alt} />
             </div>
 
             <aside className="lightbox-side">
-              <button type="button" className="lightbox-close" onClick={handleClose} aria-label="关闭预览">
+              <button
+                type="button"
+                className="lightbox-close"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  requestClose();
+                }}
+                aria-label="关闭预览"
+              >
                 ×
               </button>
 
               <div>
-                <h2 className="lightbox-title">{selectedImage.title}</h2>
-                <p className="lightbox-subtitle">{selectedImage.description}</p>
+                <h2 className="lightbox-title">{lightboxImage.title}</h2>
+                <p className="lightbox-subtitle">{lightboxImage.description}</p>
               </div>
 
               <div className="lightbox-group">
@@ -121,22 +182,22 @@ export default function GalleryClient({ images }) {
               <div className="lightbox-meta-grid">
                 <div className="lightbox-group">
                   <div className="lightbox-label">分辨率</div>
-                  <div className="lightbox-value">{selectedImage.dimensionLabel}</div>
+                  <div className="lightbox-value">{lightboxImage.dimensionLabel}</div>
                 </div>
                 <div className="lightbox-group">
                   <div className="lightbox-label">文件大小</div>
-                  <div className="lightbox-value">{selectedImage.size}</div>
+                  <div className="lightbox-value">{lightboxImage.size}</div>
                 </div>
               </div>
 
               <div className="lightbox-group">
                 <div className="lightbox-label">类型</div>
-                <div className="lightbox-value">{selectedImage.type === "PC" ? "横屏" : "竖屏"}</div>
+                <div className="lightbox-value">{lightboxImage.type === "PC" ? "横屏" : "竖屏"}</div>
               </div>
 
               <div className="lightbox-group">
                 <div className="lightbox-label">文件名</div>
-                <div className="lightbox-value">{selectedImage.filename}</div>
+                <div className="lightbox-value">{lightboxImage.filename}</div>
               </div>
 
               <div className="lightbox-actions">
@@ -147,7 +208,7 @@ export default function GalleryClient({ images }) {
                 >
                   {copied ? "已复制链接" : "复制图片链接"}
                 </button>
-                <a className="lightbox-download" href={selectedImage.src} download>
+                <a className="lightbox-download" href={lightboxImage.src} download>
                   保存图片
                 </a>
               </div>

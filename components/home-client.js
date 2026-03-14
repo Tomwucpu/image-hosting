@@ -20,6 +20,22 @@ function pickRandomImage(images, currentId) {
   return nextPool[randomIndex];
 }
 
+function getOrientationLabel(orientation) {
+  if (orientation === "portrait") {
+    return "竖屏";
+  }
+
+  if (orientation === "landscape") {
+    return "横屏";
+  }
+
+  if (orientation === "square") {
+    return "方图";
+  }
+
+  return "未识别";
+}
+
 export default function HomeClient({ images }) {
   const [origin, setOrigin] = useState("");
   const [currentImage, setCurrentImage] = useState(images[0] ?? null);
@@ -134,9 +150,9 @@ export default function HomeClient({ images }) {
           {currentImage ? (
             <div className="home-current">
               <div className="home-current-label">Current image</div>
-              <p className="home-current-title">{currentImage.title}</p>
+              <p className="home-current-title">{currentImage.filename}</p>
               <p className="home-current-meta">
-                {currentImage.filename} · {currentImage.dimensionLabel}
+                {getOrientationLabel(currentImage.orientation)} · {currentImage.dimensionLabel}
               </p>
             </div>
           ) : null}

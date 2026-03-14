@@ -8,6 +8,22 @@ import ThemeToggle from "@/components/theme-toggle";
 
 const LIGHTBOX_CLOSE_DURATION = 280;
 
+function getOrientationLabel(orientation) {
+  if (orientation === "portrait") {
+    return "竖屏";
+  }
+
+  if (orientation === "landscape") {
+    return "横屏";
+  }
+
+  if (orientation === "square") {
+    return "方图";
+  }
+
+  return "未识别";
+}
+
 export default function GalleryClient({ images }) {
   const [lightboxImage, setLightboxImage] = useState(null);
   const [isLightboxClosing, setIsLightboxClosing] = useState(false);
@@ -169,9 +185,9 @@ export default function GalleryClient({ images }) {
                 ×
               </button>
 
-              <div>
-                <h2 className="lightbox-title">{lightboxImage.title}</h2>
-                <p className="lightbox-subtitle">{lightboxImage.description}</p>
+              <div className="lightbox-group">
+                <div className="lightbox-label">文件名</div>
+                <div className="lightbox-value">{lightboxImage.filename}</div>
               </div>
 
               <div className="lightbox-group">
@@ -191,13 +207,8 @@ export default function GalleryClient({ images }) {
               </div>
 
               <div className="lightbox-group">
-                <div className="lightbox-label">类型</div>
-                <div className="lightbox-value">{lightboxImage.type === "PC" ? "横屏" : "竖屏"}</div>
-              </div>
-
-              <div className="lightbox-group">
-                <div className="lightbox-label">文件名</div>
-                <div className="lightbox-value">{lightboxImage.filename}</div>
+                <div className="lightbox-label">方向</div>
+                <div className="lightbox-value">{getOrientationLabel(lightboxImage.orientation)}</div>
               </div>
 
               <div className="lightbox-actions">

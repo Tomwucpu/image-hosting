@@ -2,16 +2,28 @@
 
 import { useEffect, useRef, useState } from "react";
 
-function getLayoutClass(layout) {
-  if (layout === "feature") {
-    return "gallery-item gallery-item--feature";
+function getOrientation(width, height) {
+  if (!width || !height) {
+    return null;
   }
 
-  if (layout === "wide") {
+  if (height > width) {
+    return "portrait";
+  }
+
+  if (width > height) {
+    return "landscape";
+  }
+
+  return "square";
+}
+
+function getLayoutClass(orientation) {
+  if (orientation === "landscape") {
     return "gallery-item gallery-item--wide";
   }
 
-  if (layout === "tall") {
+  if (orientation === "portrait") {
     return "gallery-item gallery-item--tall";
   }
 
@@ -20,6 +32,7 @@ function getLayoutClass(layout) {
 
 export default function GalleryItem({ image, index, onClick }) {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [orientation, setOrientation] = useState(image.orientation);
   const imageRef = useRef(null);
 
   useEffect(() => {
@@ -30,6 +43,8 @@ export default function GalleryItem({ image, index, onClick }) {
     }
 
     const handleReady = () => {
+      const nextOrientation = getOrientation(current.naturalWidth, current.naturalHeight) ?? image.orientation;
+      setOrientation(nextOrientation);
       setIsLoaded(true);
     };
 
@@ -51,11 +66,11 @@ export default function GalleryItem({ image, index, onClick }) {
       current.removeEventListener("error", handleReady);
       window.clearTimeout(timer);
     };
-  }, [image.src]);
+  }, [image.src, image.orientation]);
 
   return (
     <article
-      className={`${getLayoutClass(image.layout)}${isLoaded ? "" : " gallery-item--hidden"}`}
+      className={`${getLayoutClass(orientation)}${isLoaded ? "" : " gallery-item--hidden"}`}
       onClick={onClick}
     >
       <img
@@ -67,9 +82,9 @@ export default function GalleryItem({ image, index, onClick }) {
         onError={() => setIsLoaded(true)}
       />
       <div className="gallery-overlay">
-        <p className="gallery-overlay-title">{image.title}</p>
+        <p className="gallery-overlay-title">{image.filename}</p>
         <p className="gallery-overlay-meta">
-          {image.filename} · {image.type}
+          {image.dimensionLabel === "尺寸待补充" ? image.size : image.dimensionLabel}
         </p>
       </div>
     </article>

@@ -22,9 +22,9 @@ export async function GET(request) {
     filename: image.filename,
     url: absoluteUrl,
     type: image.type,
+    orientation: image.orientation,
     size: image.size,
     width: image.width,
     height: image.height,
-    title: image.title,
   });
 }

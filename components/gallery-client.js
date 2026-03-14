@@ -34,6 +34,7 @@ export default function GalleryClient({ images }) {
   const [visibleCount, setVisibleCount] = useState(INITIAL_IMAGE_COUNT);
   const [columnCount, setColumnCount] = useState(0);
   const [rowSize, setRowSize] = useState(120);
+  const [showBackToTop, setShowBackToTop] = useState(false);
   const copyResetTimer = useRef(null);
   const closeTimerRef = useRef(null);
   const gridRef = useRef(null);
@@ -58,6 +59,19 @@ export default function GalleryClient({ images }) {
   useEffect(() => {
     setVisibleCount(INITIAL_IMAGE_COUNT);
   }, [images]);
+
+  useEffect(() => {
+    const updateBackToTopVisibility = () => {
+      setShowBackToTop(window.scrollY > 560);
+    };
+
+    updateBackToTopVisibility();
+    window.addEventListener("scroll", updateBackToTopVisibility, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", updateBackToTopVisibility);
+    };
+  }, []);
 
   useEffect(() => {
     const current = gridRef.current;
@@ -192,6 +206,10 @@ export default function GalleryClient({ images }) {
     document.body.style.overflow = "hidden";
   };
 
+  const handleBackToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   if (!images.length) {
     return (
       <main className="empty-state">
@@ -246,6 +264,17 @@ export default function GalleryClient({ images }) {
       <div className="gallery-loadmore" ref={loadMoreRef} aria-live="polite">
         {hasMoreImages ? `继续滚动加载更多 · ${visibleCount}/${images.length}` : `已加载全部图片 · ${images.length}/${images.length}`}
       </div>
+
+      {showBackToTop && !lightboxImage ? (
+        <button
+          type="button"
+          className="back-to-top"
+          onClick={handleBackToTop}
+          aria-label="回到顶部"
+        >
+          ↑
+        </button>
+      ) : null}
 
       {lightboxImage ? (
         <div

@@ -33,6 +33,7 @@ export default function GalleryClient({ images }) {
   const [copied, setCopied] = useState(false);
   const [visibleCount, setVisibleCount] = useState(INITIAL_IMAGE_COUNT);
   const [columnCount, setColumnCount] = useState(0);
+  const [rowSize, setRowSize] = useState(120);
   const copyResetTimer = useRef(null);
   const closeTimerRef = useRef(null);
   const gridRef = useRef(null);
@@ -66,12 +67,24 @@ export default function GalleryClient({ images }) {
     }
 
     const updateColumnCount = () => {
-      const templateColumns = window.getComputedStyle(current).gridTemplateColumns;
-      const nextColumnCount = templateColumns.split(" ").filter(Boolean).length;
+      const computedStyle = window.getComputedStyle(current);
+      const columnWidths = computedStyle.gridTemplateColumns
+        .split(" ")
+        .map((value) => Number.parseFloat(value))
+        .filter(Number.isFinite);
+      const nextColumnCount = columnWidths.length;
+      const averageColumnWidth =
+        columnWidths.reduce((total, width) => total + width, 0) / Math.max(nextColumnCount, 1);
+      const columnGap = Number.parseFloat(computedStyle.columnGap) || 0;
+      const nextRowSize =
+        nextColumnCount >= 2
+          ? Math.round((((averageColumnWidth * 2) + columnGap) * 9) / 16)
+          : 120;
 
       setColumnCount((previousCount) =>
         previousCount === nextColumnCount ? previousCount : nextColumnCount,
       );
+      setRowSize((previousSize) => (previousSize === nextRowSize ? previousSize : nextRowSize));
     };
 
     updateColumnCount();
@@ -215,7 +228,11 @@ export default function GalleryClient({ images }) {
         </div>
       </header>
 
-      <main className="gallery-grid" ref={gridRef}>
+      <main
+        className="gallery-grid"
+        ref={gridRef}
+        style={{ "--gallery-row-size": `${rowSize}px` }}
+      >
         {visibleImages.map((image, index) => (
           <GalleryItem
             key={image.filename}

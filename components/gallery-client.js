@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
+import { getCompactImageOrder } from "@/lib/gallery-order";
 import GalleryItem from "@/components/gallery-item";
 import ThemeToggle from "@/components/theme-toggle";
 
@@ -31,8 +32,10 @@ export default function GalleryClient({ images }) {
   const [isLightboxClosing, setIsLightboxClosing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [visibleCount, setVisibleCount] = useState(INITIAL_IMAGE_COUNT);
+  const [columnCount, setColumnCount] = useState(0);
   const copyResetTimer = useRef(null);
   const closeTimerRef = useRef(null);
+  const gridRef = useRef(null);
   const loadMoreRef = useRef(null);
 
   useEffect(() => {
@@ -54,6 +57,32 @@ export default function GalleryClient({ images }) {
   useEffect(() => {
     setVisibleCount(INITIAL_IMAGE_COUNT);
   }, [images]);
+
+  useEffect(() => {
+    const current = gridRef.current;
+
+    if (!current) {
+      return undefined;
+    }
+
+    const updateColumnCount = () => {
+      const templateColumns = window.getComputedStyle(current).gridTemplateColumns;
+      const nextColumnCount = templateColumns.split(" ").filter(Boolean).length;
+
+      setColumnCount((previousCount) =>
+        previousCount === nextColumnCount ? previousCount : nextColumnCount,
+      );
+    };
+
+    updateColumnCount();
+
+    const observer = new ResizeObserver(updateColumnCount);
+    observer.observe(current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     const current = loadMoreRef.current;
@@ -166,8 +195,9 @@ export default function GalleryClient({ images }) {
       ? new URL(lightboxImage.src, window.location.href).toString()
       : lightboxImage?.src ?? "";
   const selectedPreviewSrc = lightboxImage?.previewSrc ?? lightboxImage?.src ?? "";
-  const visibleImages = images.slice(0, visibleCount);
-  const hasMoreImages = visibleCount < images.length;
+  const orderedImages = getCompactImageOrder(images, columnCount);
+  const visibleImages = orderedImages.slice(0, visibleCount);
+  const hasMoreImages = visibleCount < orderedImages.length;
 
   return (
     <div className="gallery-shell">
@@ -185,7 +215,7 @@ export default function GalleryClient({ images }) {
         </div>
       </header>
 
-      <main className="gallery-grid">
+      <main className="gallery-grid" ref={gridRef}>
         {visibleImages.map((image, index) => (
           <GalleryItem
             key={image.filename}

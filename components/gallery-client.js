@@ -14,6 +14,7 @@ const DEFAULT_LIGHTBOX_SCALE = 1;
 const MIN_LIGHTBOX_SCALE = 0.25;
 const MAX_LIGHTBOX_SCALE = 4;
 const LIGHTBOX_SCALE_STEP = 0.2;
+const LIGHTBOX_SCALE_EPSILON = 0.001;
 
 function clampValue(value, min, max) {
   return Math.min(Math.max(value, min), max);
@@ -21,6 +22,10 @@ function clampValue(value, min, max) {
 
 function getDefaultLightboxOffset() {
   return { x: 0, y: 0 };
+}
+
+function isDefaultLightboxScale(scale) {
+  return Math.abs(scale - DEFAULT_LIGHTBOX_SCALE) < LIGHTBOX_SCALE_EPSILON;
 }
 
 function getOrientationLabel(orientation) {
@@ -194,7 +199,7 @@ export default function GalleryClient({ images }) {
   };
 
   const clampLightboxOffset = (nextOffset, nextScale = lightboxScale) => {
-    if (nextScale <= DEFAULT_LIGHTBOX_SCALE) {
+    if (isDefaultLightboxScale(nextScale)) {
       return getDefaultLightboxOffset();
     }
 
@@ -205,8 +210,10 @@ export default function GalleryClient({ images }) {
       return nextOffset;
     }
 
-    const maxX = Math.max(0, ((imageElement.offsetWidth * nextScale) - viewport.clientWidth) / 2);
-    const maxY = Math.max(0, ((imageElement.offsetHeight * nextScale) - viewport.clientHeight) / 2);
+    const scaledWidth = imageElement.offsetWidth * nextScale;
+    const scaledHeight = imageElement.offsetHeight * nextScale;
+    const maxX = Math.abs(scaledWidth - viewport.clientWidth) / 2;
+    const maxY = Math.abs(scaledHeight - viewport.clientHeight) / 2;
 
     return {
       x: clampValue(nextOffset.x, -maxX, maxX),
@@ -327,7 +334,7 @@ export default function GalleryClient({ images }) {
   };
 
   const handleLightboxPointerDown = (event) => {
-    if (!lightboxImage || lightboxScale <= DEFAULT_LIGHTBOX_SCALE || event.button !== 0) {
+    if (!lightboxImage || isDefaultLightboxScale(lightboxScale) || event.button !== 0) {
       return;
     }
 
@@ -531,7 +538,7 @@ export default function GalleryClient({ images }) {
 
               <div
                 ref={visualFrameRef}
-                className={`lightbox-visual-frame${lightboxScale > DEFAULT_LIGHTBOX_SCALE ? " lightbox-visual-frame--interactive" : ""}${isLightboxDragging ? " lightbox-visual-frame--dragging" : ""}`}
+                className={`lightbox-visual-frame${!isDefaultLightboxScale(lightboxScale) ? " lightbox-visual-frame--interactive" : ""}${isLightboxDragging ? " lightbox-visual-frame--dragging" : ""}`}
                 onWheel={handleLightboxWheel}
                 onPointerDown={handleLightboxPointerDown}
                 onPointerMove={handleLightboxPointerMove}
@@ -580,7 +587,7 @@ export default function GalleryClient({ images }) {
                     className="lightbox-toolbar-button"
                     onClick={handleResetLightboxViewport}
                     disabled={
-                      lightboxScale === DEFAULT_LIGHTBOX_SCALE &&
+                      isDefaultLightboxScale(lightboxScale) &&
                       lightboxOffset.x === 0 &&
                       lightboxOffset.y === 0
                     }
@@ -638,7 +645,7 @@ export default function GalleryClient({ images }) {
               <div className="lightbox-group">
                 <div className="lightbox-label">操作</div>
                 <div className="lightbox-hint">
-                  滚轮缩放，拖拽查看局部，左右或上下方向键切换图片，按 0 可快速复原。
+                  滚轮缩放，缩小时或放大后都支持拖拽移动，左右或上下方向键切换图片，按 0 可快速复原。
                 </div>
               </div>
 

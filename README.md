@@ -5,6 +5,7 @@
 - `/` 首页使用全屏随机背景图和极简入口布局
 - `/gallery` 提供独立图库页和图片预览弹层
 - `/api/random` 支持随机跳转图片，也支持 `?redirect=false` 返回精简 JSON
+  - 重定向和 JSON 中的图片地址都使用站内相对路径，便于在自定义域名和 EdgeOne Pages 代理场景下保持当前访问域名
 
 ## Start
 

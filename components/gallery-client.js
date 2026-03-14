@@ -173,17 +173,19 @@ export default function GalleryClient({ images }) {
             </div>
 
             <aside className="lightbox-side">
-              <button
-                type="button"
-                className="lightbox-close"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  requestClose();
-                }}
-                aria-label="关闭预览"
-              >
-                ×
-              </button>
+              <div className="lightbox-toolbar">
+                <button
+                  type="button"
+                  className="lightbox-close"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    requestClose();
+                  }}
+                  aria-label="关闭预览"
+                >
+                  ×
+                </button>
+              </div>
 
               <div className="lightbox-group">
                 <div className="lightbox-label">文件名</div>
@@ -193,6 +195,13 @@ export default function GalleryClient({ images }) {
               <div className="lightbox-group">
                 <div className="lightbox-label">资源地址</div>
                 <div className="lightbox-linkbox">{selectedImageUrl}</div>
+                <button
+                  type="button"
+                  className="lightbox-button"
+                  onClick={() => handleCopy(selectedImageUrl)}
+                >
+                  {copied ? "已复制链接" : "复制图片链接"}
+                </button>
               </div>
 
               <div className="lightbox-meta-grid">
@@ -212,13 +221,6 @@ export default function GalleryClient({ images }) {
               </div>
 
               <div className="lightbox-actions">
-                <button
-                  type="button"
-                  className="lightbox-button"
-                  onClick={() => handleCopy(selectedImageUrl)}
-                >
-                  {copied ? "已复制链接" : "复制图片链接"}
-                </button>
                 <a className="lightbox-download" href={lightboxImage.src} download>
                   保存图片
                 </a>

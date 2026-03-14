@@ -5,7 +5,7 @@ import Link from "next/link";
 
 import ThemeToggle from "@/components/theme-toggle";
 
-function pickRandomImage(images, currentId) {
+function pickRandomImage(images, currentFilename) {
   if (!images.length) {
     return null;
   }
@@ -14,7 +14,7 @@ function pickRandomImage(images, currentId) {
     return images[0];
   }
 
-  const nextPool = images.filter((image) => image.id !== currentId);
+  const nextPool = images.filter((image) => image.filename !== currentFilename);
   const randomIndex = Math.floor(Math.random() * nextPool.length);
 
   return nextPool[randomIndex];
@@ -80,7 +80,7 @@ export default function HomeClient({ images }) {
   }, [images]);
 
   const handleRefresh = () => {
-    const nextImage = pickRandomImage(images, currentImage?.id);
+    const nextImage = pickRandomImage(images, currentImage?.filename);
 
     if (!nextImage) {
       return;

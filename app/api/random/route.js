@@ -1,6 +1,6 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-import { getRandomSceneryImage } from "@/lib/images";
+import { getRandomSceneryImage, toApiImageSummary } from "@/lib/images";
 
 export async function GET(request) {
   const url = new URL(request.url);
@@ -18,13 +18,5 @@ export async function GET(request) {
     return NextResponse.redirect(absoluteUrl, 307);
   }
 
-  return NextResponse.json({
-    filename: image.filename,
-    url: absoluteUrl,
-    type: image.type,
-    orientation: image.orientation,
-    size: image.size,
-    width: image.width,
-    height: image.height,
-  });
+  return NextResponse.json(toApiImageSummary(image, absoluteUrl));
 }

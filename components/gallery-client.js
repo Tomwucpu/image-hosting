@@ -1,12 +1,14 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 import GalleryItem from "@/components/gallery-item";
 import ThemeToggle from "@/components/theme-toggle";
 
 const LIGHTBOX_CLOSE_DURATION = 280;
+const INITIAL_IMAGE_COUNT = 24;
+const IMAGE_BATCH_SIZE = 24;
 
 function getOrientationLabel(orientation) {
   if (orientation === "portrait") {
@@ -28,8 +30,10 @@ export default function GalleryClient({ images }) {
   const [lightboxImage, setLightboxImage] = useState(null);
   const [isLightboxClosing, setIsLightboxClosing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_IMAGE_COUNT);
   const copyResetTimer = useRef(null);
   const closeTimerRef = useRef(null);
+  const loadMoreRef = useRef(null);
 
   useEffect(() => {
     document.body.style.overflow = "auto";
@@ -47,9 +51,36 @@ export default function GalleryClient({ images }) {
     };
   }, []);
 
-  const galleryImages = useMemo(() => {
-    return [...images];
+  useEffect(() => {
+    setVisibleCount(INITIAL_IMAGE_COUNT);
   }, [images]);
+
+  useEffect(() => {
+    const current = loadMoreRef.current;
+
+    if (!current || visibleCount >= images.length) {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+
+        if (!entry?.isIntersecting) {
+          return;
+        }
+
+        setVisibleCount((count) => Math.min(count + IMAGE_BATCH_SIZE, images.length));
+      },
+      { rootMargin: "480px 0px" },
+    );
+
+    observer.observe(current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [images.length, visibleCount]);
 
   const finishClose = () => {
     setLightboxImage(null);
@@ -119,7 +150,7 @@ export default function GalleryClient({ images }) {
     document.body.style.overflow = "hidden";
   };
 
-  if (!galleryImages.length) {
+  if (!images.length) {
     return (
       <main className="empty-state">
         <div>
@@ -134,6 +165,8 @@ export default function GalleryClient({ images }) {
     lightboxImage && typeof window !== "undefined"
       ? new URL(lightboxImage.src, window.location.href).toString()
       : lightboxImage?.src ?? "";
+  const visibleImages = images.slice(0, visibleCount);
+  const hasMoreImages = visibleCount < images.length;
 
   return (
     <div className="gallery-shell">
@@ -142,7 +175,7 @@ export default function GalleryClient({ images }) {
           <Link href="/" className="gallery-brand-link">
             Gallery
           </Link>
-          <div className="gallery-count">全部图片 · {galleryImages.length}</div>
+          <div className="gallery-count">全部图片 · {images.length}</div>
         </div>
 
         <div className="gallery-tools">
@@ -152,15 +185,19 @@ export default function GalleryClient({ images }) {
       </header>
 
       <main className="gallery-grid">
-        {galleryImages.map((image, index) => (
+        {visibleImages.map((image, index) => (
           <GalleryItem
-            key={image.id}
+            key={image.filename}
             image={image}
             index={index}
             onClick={() => handleOpen(image)}
           />
         ))}
       </main>
+
+      <div className="gallery-loadmore" ref={loadMoreRef} aria-live="polite">
+        {hasMoreImages ? `继续滚动加载更多 · ${visibleCount}/${images.length}` : `已加载全部图片 · ${images.length}/${images.length}`}
+      </div>
 
       {lightboxImage ? (
         <div
@@ -169,7 +206,7 @@ export default function GalleryClient({ images }) {
         >
           <div className="lightbox-card" onClick={(event) => event.stopPropagation()}>
             <div className="lightbox-visual">
-              <img src={lightboxImage.src} alt={lightboxImage.alt} />
+              <img src={lightboxImage.src} alt={lightboxImage.filename} />
             </div>
 
             <aside className="lightbox-side">

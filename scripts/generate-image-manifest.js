@@ -29,38 +29,6 @@ const jpegSofMarkers = new Set([
   0xcf,
 ]);
 
-function formatBytes(bytes) {
-  if (!Number.isFinite(bytes) || bytes <= 0) {
-    return "未知";
-  }
-
-  const units = ["B", "KB", "MB", "GB"];
-  const exponent = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-  const value = bytes / 1024 ** exponent;
-
-  return `${value.toFixed(value >= 10 || exponent === 0 ? 0 : 1)} ${units[exponent]}`;
-}
-
-function getOrientation(width, height) {
-  if (!width || !height) {
-    return null;
-  }
-
-  if (height > width) {
-    return "portrait";
-  }
-
-  if (width > height) {
-    return "landscape";
-  }
-
-  return "square";
-}
-
-function getType(orientation) {
-  return orientation === "portrait" ? "mobile" : "pc";
-}
-
 function readUInt24LE(buffer, offset) {
   return buffer[offset] | (buffer[offset + 1] << 8) | (buffer[offset + 2] << 16);
 }
@@ -214,10 +182,6 @@ function getImageDimensions(buffer) {
   );
 }
 
-function toPublicSrc(filename) {
-  return `/image-scenery/${encodeURIComponent(filename)}`;
-}
-
 async function getImageFiles() {
   await fs.mkdir(imageDir, { recursive: true });
 
@@ -241,21 +205,20 @@ async function buildManifest() {
       const dimensions = getImageDimensions(buffer) ?? {};
       const width = dimensions.width ?? null;
       const height = dimensions.height ?? null;
-      const orientation = getOrientation(width, height);
-
-      return {
-        id: filename,
+      const manifestEntry = {
         filename,
-        src: toPublicSrc(filename),
-        alt: filename,
-        width,
-        height,
-        orientation,
-        dimensionLabel: width && height ? `${width} × ${height}` : "尺寸待补充",
         sizeBytes: fileStats.size,
-        size: formatBytes(fileStats.size),
-        type: getType(orientation),
       };
+
+      if (width !== null) {
+        manifestEntry.width = width;
+      }
+
+      if (height !== null) {
+        manifestEntry.height = height;
+      }
+
+      return manifestEntry;
     }),
   );
 }

@@ -63,6 +63,32 @@ function LightboxNavIcon({ direction }) {
   );
 }
 
+function BackToTopIcon() {
+  return (
+    <svg className="back-to-top-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M7 5.75h10"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+      <path
+        d="M12 17.75V8.25"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+      <path
+        d="M8.5 11.75 12 8.25l3.5 3.5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export default function GalleryClient({ images }) {
   const [lightboxFilename, setLightboxFilename] = useState(null);
   const [isLightboxClosing, setIsLightboxClosing] = useState(false);
@@ -534,7 +560,7 @@ export default function GalleryClient({ images }) {
           onClick={handleBackToTop}
           aria-label="回到顶部"
         >
-          ↑
+          <BackToTopIcon />
         </button>
       ) : null}
 
@@ -659,13 +685,6 @@ export default function GalleryClient({ images }) {
               <div className="lightbox-group">
                 <div className="lightbox-label">方向</div>
                 <div className="lightbox-value">{getOrientationLabel(lightboxImage.orientation)}</div>
-              </div>
-
-              <div className="lightbox-group">
-                <div className="lightbox-label">操作</div>
-                <div className="lightbox-hint">
-                  滚轮缩放，缩小时或放大后都支持拖拽移动，左右或上下方向键切换图片，按 0 可快速复原。
-                </div>
               </div>
 
               <div className="lightbox-actions">

@@ -132,10 +132,6 @@ export default function HomeClient({ images }) {
           <div className="home-api">
             <code>{apiUrl}</code>
             <div className="home-divider" />
-            <div className="home-tips">
-              <span>指定类型: ?type=[pc|mobile]</span>
-              <span>JSON 格式: ?redirect=false</span>
-            </div>
           </div>
 
           <div className="home-actions">

@@ -13,4 +13,8 @@ npm install
 npm run dev
 ```
 
-图片数据来自 `public/image-scenery/images.json`，图片文件放在 `public/image-scenery/` 下即可。
+把图片文件放进 `public/image-scenery/` 即可。
+
+- 本地运行 `npm run dev` 前会自动生成 `public/image-scenery/images.json`
+- EdgeOne Pages 部署时只要执行 `npm run build`，构建前也会自动刷新图片元数据
+- 生成内容包含文件名、文件大小、宽高、方向和前端可直接使用的访问路径

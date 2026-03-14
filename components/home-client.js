@@ -107,7 +107,7 @@ export default function HomeClient({ images }) {
       <main className="empty-state">
         <div>
           <h1>暂无图片</h1>
-          <p>请先在 public/image-scenery 中放入图片，并维护 images.json。</p>
+          <p>请先在 public/image-scenery 中放入图片，启动或部署时会自动生成清单。</p>
         </div>
       </main>
     );

@@ -124,7 +124,7 @@ export default function GalleryClient({ images }) {
       <main className="empty-state">
         <div>
           <h1>暂无图片</h1>
-          <p>请先在 public/image-scenery 中补充图片资源。</p>
+          <p>请先在 public/image-scenery 中补充图片资源，启动或部署时会自动生成清单。</p>
         </div>
       </main>
     );
@@ -236,3 +236,4 @@ export default function GalleryClient({ images }) {
     </div>
   );
 }
+

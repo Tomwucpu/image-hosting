@@ -44,6 +44,25 @@ function getOrientationLabel(orientation) {
   return "未识别";
 }
 
+function LightboxNavIcon({ direction }) {
+  const path =
+    direction === "prev"
+      ? "M14.5 5.75 8.25 12l6.25 6.25"
+      : "M9.5 5.75 15.75 12 9.5 18.25";
+
+  return (
+    <svg className="lightbox-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d={path}
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export default function GalleryClient({ images }) {
   const [lightboxFilename, setLightboxFilename] = useState(null);
   const [isLightboxClosing, setIsLightboxClosing] = useState(false);
@@ -533,7 +552,7 @@ export default function GalleryClient({ images }) {
                 aria-label="查看上一张图片"
                 disabled={!hasPreviousImage || isLightboxClosing}
               >
-                ‹
+                <LightboxNavIcon direction="prev" />
               </button>
 
               <div
@@ -570,7 +589,7 @@ export default function GalleryClient({ images }) {
                 aria-label="查看下一张图片"
                 disabled={!hasNextImage || isLightboxClosing}
               >
-                ›
+                <LightboxNavIcon direction="next" />
               </button>
             </div>
 

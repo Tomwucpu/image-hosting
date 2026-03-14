@@ -2,16 +2,32 @@ import { NextResponse } from "next/server";
 
 import { getRandomSceneryImage, toApiImageSummary } from "@/lib/images";
 
+const DEFAULT_PUBLIC_ORIGIN = "https://image.temperaturetw.top";
+
+function isLocalHost(hostname) {
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1" ||
+    hostname === "[::1]"
+  );
+}
+
 function getPublicOrigin(request) {
   const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
   const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
   const host = request.headers.get("host")?.trim();
   const url = new URL(request.url);
+  const originHost = forwardedHost || host || url.host;
+  const hostname = originHost?.split(":")[0]?.trim() || "";
 
-  const protocol = forwardedProto || url.protocol.replace(":", "");
-  const hostname = forwardedHost || host || url.host;
+  if (!originHost || isLocalHost(hostname)) {
+    return DEFAULT_PUBLIC_ORIGIN;
+  }
 
-  return `${protocol}://${hostname}`;
+  const protocol = forwardedProto || url.protocol.replace(":", "") || "https";
+
+  return `${protocol}://${originHost}`;
 }
 
 export async function GET(request) {
